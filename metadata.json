@@ -1,0 +1,6 @@
+{
+  "name": "AI Image Studio",
+  "description": "A mobile-friendly tool for generating and managing AI images using OpenAI-compatible APIs. Support for custom endpoints, prompt presets, and image history.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
