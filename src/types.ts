@@ -24,6 +24,12 @@ export interface PrefixTemplate {
   content: string;
 }
 
+export interface SuffixTemplate {
+  id: string;
+  name: string;
+  content: string;
+}
+
 export interface GeneratedImage {
   id: string;
   url: string;

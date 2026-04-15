@@ -36,6 +36,7 @@ import {
   ImageSettings, 
   PromptPreset, 
   PrefixTemplate,
+  SuffixTemplate,
   GeneratedImage, 
   DEFAULT_CONFIG, 
   DEFAULT_SETTINGS,
@@ -52,6 +53,8 @@ export default function App() {
   const [presets, setPresets] = useState<PromptPreset[]>([]);
   const [prefixTemplates, setPrefixTemplates] = useState<PrefixTemplate[]>([]);
   const [selectedPrefixId, setSelectedPrefixId] = useState<string>('none');
+  const [suffixTemplates, setSuffixTemplates] = useState<SuffixTemplate[]>([]);
+  const [selectedSuffixId, setSelectedSuffixId] = useState<string>('none');
   const [history, setHistory] = useState<GeneratedImage[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -61,8 +64,11 @@ export default function App() {
   const [viewingImage, setViewingImage] = useState<GeneratedImage | null>(null);
   const [deletingImageId, setDeletingImageId] = useState<string | null>(null);
   const [isManagingPrefixes, setIsManagingPrefixes] = useState(false);
+  const [isManagingSuffixes, setIsManagingSuffixes] = useState(false);
   const [newPrefixName, setNewPrefixName] = useState('');
   const [newPrefixContent, setNewPrefixContent] = useState('');
+  const [newSuffixName, setNewSuffixName] = useState('');
+  const [newSuffixContent, setNewSuffixContent] = useState('');
 
   // Load data from localStorage
   useEffect(() => {
@@ -70,12 +76,14 @@ export default function App() {
     const savedSettings = localStorage.getItem('ai_image_settings');
     const savedPresets = localStorage.getItem('ai_image_presets');
     const savedPrefixes = localStorage.getItem('ai_image_prefixes');
+    const savedSuffixes = localStorage.getItem('ai_image_suffixes');
     const savedHistory = localStorage.getItem('ai_image_history');
 
     if (savedConfig) setConfig(JSON.parse(savedConfig));
     if (savedSettings) setSettings(JSON.parse(savedSettings));
     if (savedPresets) setPresets(JSON.parse(savedPresets));
     if (savedPrefixes) setPrefixTemplates(JSON.parse(savedPrefixes));
+    if (savedSuffixes) setSuffixTemplates(JSON.parse(savedSuffixes));
     if (savedHistory) setHistory(JSON.parse(savedHistory));
   }, []);
 
@@ -97,6 +105,10 @@ export default function App() {
   }, [prefixTemplates]);
 
   useEffect(() => {
+    localStorage.setItem('ai_image_suffixes', JSON.stringify(suffixTemplates));
+  }, [suffixTemplates]);
+
+  useEffect(() => {
     localStorage.setItem('ai_image_history', JSON.stringify(history));
   }, [history]);
 
@@ -113,7 +125,10 @@ export default function App() {
     }
 
     const prefix = prefixTemplates.find(p => p.id === selectedPrefixId)?.content || '';
-    const finalPrompt = prefix ? `${prefix} ${prompt}` : prompt;
+    const suffix = suffixTemplates.find(s => s.id === selectedSuffixId)?.content || '';
+    let finalPrompt = prompt;
+    if (prefix) finalPrompt = `${prefix} ${finalPrompt}`;
+    if (suffix) finalPrompt = `${finalPrompt} ${suffix}`;
 
     setIsGenerating(true);
     try {
@@ -200,6 +215,24 @@ export default function App() {
   const handleDeletePrefix = (id: string) => {
     setPrefixTemplates(prefixTemplates.filter(p => p.id !== id));
     if (selectedPrefixId === id) setSelectedPrefixId('none');
+  };
+
+  const handleAddSuffix = () => {
+    if (!newSuffixName.trim() || !newSuffixContent.trim()) return;
+    const newSuffix: SuffixTemplate = {
+      id: uuidv4(),
+      name: newSuffixName,
+      content: newSuffixContent,
+    };
+    setSuffixTemplates([...suffixTemplates, newSuffix]);
+    setNewSuffixName('');
+    setNewSuffixContent('');
+    toast.success('后置提示词模板已保存');
+  };
+
+  const handleDeleteSuffix = (id: string) => {
+    setSuffixTemplates(suffixTemplates.filter(s => s.id !== id));
+    if (selectedSuffixId === id) setSelectedSuffixId('none');
   };
 
   const handleDownload = async (url: string, filename: string) => {
@@ -335,14 +368,58 @@ export default function App() {
             </div>
 
             <div className="space-y-3">
-              <Label className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground">Prompt Studio</Label>
+              <div className="flex justify-between items-center">
+                <Label className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground">Suffix Template</Label>
+                <button 
+                  className="text-[10px] underline opacity-60 hover:opacity-100"
+                  onClick={() => setIsManagingSuffixes(true)}
+                >
+                  Manage
+                </button>
+              </div>
+              <Select value={selectedSuffixId} onValueChange={setSelectedSuffixId}>
+                <SelectTrigger className="h-9 bg-background border-secondary">
+                  <SelectValue placeholder="Select a suffix" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {suffixTemplates.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <Label className="text-[11px] uppercase tracking-wider font-bold text-muted-foreground">Prompt Studio</Label>
+                <button 
+                  className="text-[10px] underline opacity-60 hover:opacity-100"
+                  onClick={() => setPrompt('')}
+                  disabled={!prompt}
+                >
+                  Clear
+                </button>
+              </div>
               <div className="space-y-2">
-                <Textarea 
-                  placeholder="Describe your vision..."
-                  className="min-h-[100px] bg-background border-secondary text-sm leading-relaxed"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                />
+                <div className="space-y-1">
+                  {selectedPrefixId !== 'none' && (
+                    <div className="text-[10px] p-2 bg-neutral-50 border border-secondary border-dashed opacity-60 font-serif italic line-clamp-2">
+                      {prefixTemplates.find(p => p.id === selectedPrefixId)?.content}
+                    </div>
+                  )}
+                  <Textarea 
+                    placeholder="Describe your vision..."
+                    className="min-h-[100px] bg-background border-secondary text-sm leading-relaxed rounded-none focus-visible:ring-0"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                  />
+                  {selectedSuffixId !== 'none' && (
+                    <div className="text-[10px] p-2 bg-neutral-50 border border-secondary border-dashed opacity-60 font-serif italic line-clamp-2">
+                      {suffixTemplates.find(s => s.id === selectedSuffixId)?.content}
+                    </div>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {presets.map((p) => (
                     <button 
@@ -678,6 +755,77 @@ export default function App() {
           
           <DialogFooter>
             <Button onClick={() => setIsManagingPrefixes(false)} className="w-full rounded-none uppercase tracking-widest font-bold text-xs">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Suffix Management Dialog */}
+      <Dialog open={isManagingSuffixes} onOpenChange={setIsManagingSuffixes}>
+        <DialogContent className="max-w-2xl p-8 bg-white rounded-none border-foreground">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-serif italic">Manage Suffix Templates</DialogTitle>
+            <DialogDescription className="text-xs uppercase tracking-widest opacity-60 font-bold pt-2">
+              Fixed prompts to append to your visions
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-6">
+            <div className="grid grid-cols-[1fr_2fr_auto] gap-4 items-end">
+              <div className="space-y-2">
+                <Label className="text-[10px] uppercase tracking-widest font-bold">Name</Label>
+                <Input 
+                  placeholder="e.g. Style" 
+                  value={newSuffixName}
+                  onChange={(e) => setNewSuffixName(e.target.value)}
+                  className="h-9 rounded-none border-secondary"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] uppercase tracking-widest font-bold">Content</Label>
+                <Input 
+                  placeholder="e.g. oil painting, van gogh style..." 
+                  value={newSuffixContent}
+                  onChange={(e) => setNewSuffixContent(e.target.value)}
+                  className="h-9 rounded-none border-secondary"
+                />
+              </div>
+              <Button onClick={handleAddSuffix} className="h-9 rounded-none">
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <Separator />
+
+            <ScrollArea className="h-[200px] pr-4">
+              <div className="space-y-3">
+                {suffixTemplates.length === 0 ? (
+                  <p className="text-center py-8 text-xs italic opacity-40">No templates created yet.</p>
+                ) : (
+                  suffixTemplates.map(s => (
+                    <div key={s.id} className="flex justify-between items-center p-3 border border-secondary group">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-widest">{s.name}</p>
+                        <p className="text-[10px] opacity-60 line-clamp-1">{s.content}</p>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleDeleteSuffix(s.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={() => setIsManagingSuffixes(false)} className="w-full rounded-none uppercase tracking-widest font-bold text-xs">
               Close
             </Button>
           </DialogFooter>
