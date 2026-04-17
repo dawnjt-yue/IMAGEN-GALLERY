@@ -422,13 +422,21 @@ export default function App() {
                 </div>
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {presets.map((p) => (
-                    <button 
-                      key={p.id}
-                      className="text-[10px] px-2 py-1 border border-foreground hover:bg-foreground hover:text-white transition-colors"
-                      onClick={() => setPrompt(p.content)}
-                    >
-                      {p.name}
-                    </button>
+                    <div key={p.id} className="flex border border-foreground">
+                      <button 
+                        className="text-[10px] px-2 py-1 hover:bg-neutral-50 transition-colors"
+                        onClick={() => setPrompt(p.content)}
+                      >
+                        {p.name}
+                      </button>
+                      <button 
+                        className="px-1.5 border-l border-foreground hover:bg-red-50 text-red-600 transition-colors flex items-center justify-center group/del"
+                        onClick={() => handleDeletePreset(p.id)}
+                        title="Delete Preset"
+                      >
+                        <X className="w-2.5 h-2.5 opacity-40 group-hover/del:opacity-100" />
+                      </button>
+                    </div>
                   ))}
                   <button 
                     className="text-[10px] px-2 py-1 border border-dashed border-foreground/40 hover:border-foreground transition-colors"
